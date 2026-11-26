@@ -5,12 +5,12 @@ from discord import ui
 from aiohttp import web
 import asyncio
 
-# Pegar configurações das variáveis de ambiente (Render)
+# Configurações
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 CANAL_ID = int(os.environ.get("CANAL_ID"))
 PORT = int(os.environ.get("PORT", 8080))
 
-# Configurar bot
+# Bot
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -37,7 +37,7 @@ async def on_ready():
 async def teste(ctx):
     await ctx.send("🔥 PHOENIX BOT funcionando perfeitamente!")
 
-# Servidor web para receber dados do site do seu amigo
+# Servidor web
 async def handle_promocao(request):
     try:
         data = await request.json()
@@ -67,20 +67,30 @@ async def handle_promocao(request):
             return web.Response(text="OK")
         return web.Response(text="Canal não encontrado", status=404)
     except Exception as e:
-        print(f"Erro ao receber dados: {e}")
+        print(f"Erro: {e}")
         return web.Response(text="Erro interno", status=500)
 
-async def main():
-    # Inicia o servidor web
+# Health check para o Render
+async def handle_health(request):
+    return web.Response(text="OK")
+
+async def start_web_server():
     app = web.Application()
     app.router.add_post('/promover', handle_promocao)
+    app.router.add_get('/', handle_health)
+    
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
     print(f"🌐 Servidor web rodando na porta {PORT}")
+    return runner
+
+async def main():
+    # Inicia o servidor web primeiro
+    runner = await start_web_server()
     
-    # Inicia o bot do Discord
+    # Depois inicia o bot
     await bot.start(DISCORD_TOKEN)
 
 if __name__ == "__main__":
